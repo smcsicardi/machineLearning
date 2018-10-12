@@ -12,9 +12,7 @@ def construir_arbol(instancias, etiquetas, profundidad, criterio, diccColumnas):
     # ALGORITMO RECURSIVO para construcción de un árbol de decisión binario. 
     
     # Suponemos que estamos parados en la raiz del árbol y tenemos que decidir cómo construirlo. 
-    print(profundidad)
     ganancia, pregunta = encontrar_mejor_atributo_y_corte(instancias, etiquetas, criterio, diccColumnas)
-    diccColumnas[pregunta.atributo] = []
     
     # Criterio de corte: ¿Hay ganancia?
     if ganancia == 0 or profundidad == 0:
@@ -97,29 +95,26 @@ def calculoGain(instancias, etiquetas_rama_izquierda, etiquetas_rama_derecha, fu
 
 def partir_segun(pregunta, instancias, etiquetas):
     # Esta función debe separar instancias y etiquetas según si cada instancia cumple o no con la pregunta (ver método 'cumple')
-    # COMPLETAR (recomendamos utilizar máscaras para este punto)
 
-    inst = instancias.copy()
-    inst['etiquetas'] = etiquetas
-    
-    
-    instancias_cumplen = inst[pregunta.cumple(inst)]
-    instancias_no_cumplen = inst[~pregunta.cumple(inst)]
-    
-    
-    etiquetas_cumplen = instancias_cumplen['etiquetas'].tolist()
-    etiquetas_no_cumplen = instancias_no_cumplen['etiquetas'].tolist()
-    
-    instancias_cumplen.drop('etiquetas', axis=1, inplace=True)
-    instancias_no_cumplen.drop('etiquetas', axis=1, inplace=True)
+    instancias_cumplen = []
+    instancias_no_cumplen = []
+    etiquetas_cumplen = []
+    etiquetas_no_cumplen = []
 
+    for i in range(instancias.shape[0]):
+        if pregunta.cumple(instancias[i]):
+            instancias_cumplen.append(instancias[i])
+            etiquetas_cumplen.append(etiquetas[i])
+        else:
+            instancias_no_cumplen.append(instancias[i])
+            etiquetas_no_cumplen.append(etiquetas[i])
     
-    return instancias_cumplen, etiquetas_cumplen, instancias_no_cumplen, etiquetas_no_cumplen
+    return np.array(instancias_cumplen), etiquetas_cumplen, np.array(instancias_no_cumplen), etiquetas_no_cumplen
 
 def encontrar_mejor_atributo_y_corte(instancias, etiquetas, criterio, diccColumnas):
     max_ganancia = 0
     mejor_pregunta = None
-    for columna in instancias.columns:
+    for columna in range(instancias.shape[1]):
         listaValores = diccColumnas[columna]
         for valor in listaValores:
             # Probando corte para atributo y valor
@@ -161,7 +156,6 @@ def predecir(arbol, x_t):
         return predecir(arbol.sub_arbol_izquierdo, x_t)
     else:
         return predecir(arbol.sub_arbol_derecho, x_t)
-        4
 
 
 class MiClasificadorArbol(): 
@@ -173,10 +167,9 @@ class MiClasificadorArbol():
     
     def fit(self, X_train, y_train):
         diccColumnas = {}
-        df = pd.DataFrame(X_train, columns=self.columnas)
         for c in self.columnas:
-            diccColumnas[c] = valoresDondeCambiaEtiqueta(df[c].tolist(), y_train)
-        self.arbol = construir_arbol(df, y_train, self.profundidad, self.criterio, diccColumnas)
+            diccColumnas[c] = valoresDondeCambiaEtiqueta(X_train[:, c].tolist(), y_train)
+        self.arbol = construir_arbol(X_train, y_train, self.profundidad, self.criterio, diccColumnas)
         return self
     
     def predict(self, X_test):
