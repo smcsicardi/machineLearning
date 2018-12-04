@@ -157,6 +157,20 @@ def predecir(arbol, x_t):
     else:
         return predecir(arbol.sub_arbol_derecho, x_t)
 
+def predecir_probas(arbol, x_t, listaEtiquetas):
+    if isinstance(arbol, Hoja):
+        res = []
+        for x in listaEtiquetas:
+            if arbol.cuentas.get(x):
+                res.append(arbol.cuentas[x]/sum(arbol.cuentas.values()))
+            else:
+                res.append(0)
+        return res
+    if x_t[arbol.pregunta.atributo] > arbol.pregunta.valor:
+        return predecir_probas(arbol.sub_arbol_izquierdo, x_t, listaEtiquetas)
+    else:
+        return predecir_probas(arbol.sub_arbol_derecho, x_t, listaEtiquetas)
+
 
 class MiClasificadorArbol(): 
     def __init__(self, columnas, profundidad, criterio):
@@ -164,9 +178,11 @@ class MiClasificadorArbol():
         self.columnas = columnas
         self.profundidad = profundidad
         self.criterio = criterio
+        self.outputs = []
     
     def fit(self, X_train, y_train):
         diccColumnas = {}
+        self.outputs = sorted(list(set(y_train)))
         for c in self.columnas:
             diccColumnas[c] = valoresDondeCambiaEtiqueta(X_train[:, c].tolist(), y_train)
         self.arbol = construir_arbol(X_train, y_train, self.profundidad, self.criterio, diccColumnas)
@@ -177,6 +193,14 @@ class MiClasificadorArbol():
         for x_t in X_test:
             x_t_df = pd.DataFrame([x_t], columns=self.columnas).iloc[0]
             prediction = predecir(self.arbol, x_t_df) 
+            predictions.append(prediction)
+        return predictions
+
+    def predict_proba(self, X_test):
+        predictions = []
+        for x_t in X_test:
+            x_t_df = pd.DataFrame([x_t], columns=self.columnas).iloc[0]
+            prediction = predecir_probas(self.arbol, x_t_df, self.outputs) 
             predictions.append(prediction)
         return predictions
     
